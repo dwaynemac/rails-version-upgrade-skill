@@ -80,8 +80,11 @@ and need manual confirmation.
 
 ```bash
 bundle outdated || true
-bundle exec next_rails bundle_report
+bundle exec bundle_report compatibility --rails-version=8.0.0
 ```
+
+Use the actual target patch instead of `8.0.0` and ensure `next_rails` is
+available in the selected bundle.
 
 Also check the app's `Gemfile.lock` with RailsBump for Rails 8.0 compatibility.
 Update only gems required by the Rails/Ruby bump or confirmed incompatibilities.

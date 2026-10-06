@@ -51,7 +51,8 @@ derived from the official Rails upgrade guides and FastRuby.io's methodology.
 6. **Run `bin/rails app:update`** – accept/merge config changes interactively;
    review `new_framework_defaults_X_Y.rb`.
 7. **Fix gem compatibility** – resolve incompatible gems one at a time using
-   `next_rails bundle_report` / RailsBump; never mass-update.
+   `bundle exec bundle_report compatibility --rails-version=<target>` /
+   RailsBump; never mass-update.
 8. **Fix the broken build** – attack errors before failures; start with model
    tests; batch fixes by root cause.
 9. **Migrate framework defaults** – uncomment defaults in

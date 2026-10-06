@@ -28,6 +28,23 @@ Never jump across minor versions. Each hop is a complete cycle.
 
 ### 0.2 Verify test coverage
 
+Before running the baseline, check the repository's test setup instructions,
+test helpers, and CI configuration for required local configuration, assets,
+and browser prerequisites:
+
+- Verify required test configuration keys are present without printing their
+  values. Use documented test-safe values or authorized local configuration;
+  never fabricate live credentials or copy production secrets to make tests pass.
+- For browser tests, check the installed browser version against the project's
+  driver and driver-manager support. Permission to launch a browser does not
+  establish driver compatibility.
+- Check the configured Node version and package-manager executable separately;
+  selecting Node with asdf does not guarantee Yarn is available for that version.
+- Finish required test asset builds before starting the suite. Check generated
+  manifests and fixture dependencies, including fingerprinted files under
+  `public/assets` that may be absent in a fresh worktree. A build completed during
+  the run does not retroactively clear earlier asset errors.
+
 ```bash
 bundle exec rake stats
 ```
@@ -38,6 +55,24 @@ Run the full test suite and confirm it is green:
 bundle exec rails test        # Minitest
 bundle exec rspec             # RSpec
 ```
+
+Use the repository's full-suite commands, including a separate system-test
+command when needed. Record the commands, exit status, and test counts, including
+failures, errors, and skips. Focused reruns can diagnose a problem but do not
+replace the full baseline.
+
+Classify style/lint checks embedded in the application suite separately from
+application assertions. Report them and follow the repository's required checks;
+do not count them as application defects or claim the combined suite passed.
+
+If the baseline is red, distinguish an evidenced setup blocker (such as missing
+test API configuration or an unresolved browser driver) from an application
+defect. Resolve the prerequisite using the documented test setup, then rerun the
+full suite. If it cannot be resolved, report the blocker and that a green
+baseline has not been established; do not classify it as a production defect
+without evidence. Never weaken assertions or skip tests to obtain a green run.
+A real application failure on the current Rails version remains a stop condition:
+fix it and establish a green full baseline before changing Rails dependencies.
 
 If coverage is below ~80%, strongly recommend adding tests before proceeding.
 Use `simplecov` if not already configured.
@@ -144,8 +179,12 @@ bin/rails runner 'pp Rails.autoloaders.main.dirs; pp Rails.autoloaders.once.dirs
 ```bash
 gem install next_rails
 next --init   # or: bundle exec next --init
-bundle exec next_rails bundle_report
+bundle exec bundle_report compatibility --rails-version=7.2.4
 ```
+
+Replace `7.2.4` with the exact target version for this hop. `bundle_report` is
+an executable provided by `next_rails`, not a `next_rails` subcommand; make it
+available in the selected bundle before using `bundle exec`.
 
 Alternatively, paste `Gemfile.lock` into https://railsbump.org/ and filter for
 the target Rails version. Create a list of gems that need updating.

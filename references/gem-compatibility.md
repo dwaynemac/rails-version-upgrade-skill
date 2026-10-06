@@ -21,13 +21,23 @@ Always update gems in targeted, minimal increments.
 ### Using `next_rails`
 
 ```bash
-# Against the target Gemfile
-BUNDLE_GEMFILE=Gemfile.next bundle exec next_rails bundle_report
+# Against the selected bundle; replace 7.2.4 with this hop's target
+bundle exec bundle_report compatibility --rails-version=7.2.4
 ```
 
-Produces a list of gems that:
-- Have no version compatible with the target Rails
-- Have compatible versions but require a version bump
+`bundle_report` is an executable provided by `next_rails`, not a subcommand
+of `next_rails`. Ensure the gem is available in the selected bundle; prepend
+`BUNDLE_GEMFILE=Gemfile.next` when checking the target bundle.
+
+The report checks declared dependency compatibility. A clean report does not
+prove that boot, runtime behavior, or deprecations are clean; still run the full
+suite and inspect boot/test warnings.
+
+For example, a Rails 7.1 → 7.2 upgrade reported no incompatible gems but boot
+warnings exposed `ActiveSupport::ProxyObject` usage in `delayed_job` 4.1.11 and
+`jbuilder` 2.11.5. Targeted updates to 4.2.0 and 2.15.1 respectively removed those
+warnings. Trace each warning to its owner and verify an appropriate release for
+the app; these versions are examples, not universal pins.
 
 ### Using RailsBump
 
