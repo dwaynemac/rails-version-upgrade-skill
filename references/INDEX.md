@@ -29,7 +29,7 @@ or planning the work for a specific hop.
 
 ## gem-compatibility.md
 How to audit, categorise, and update third-party gems during an upgrade.
-Covers `next_rails bundle_report`, RailsBump, one-gem-at-a-time update
+Covers `bundle_report compatibility`, RailsBump, one-gem-at-a-time update
 strategy, dual-boot conditional code patterns, and a compatibility table for
 common gems across Rails versions.
 

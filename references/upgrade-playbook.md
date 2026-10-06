@@ -169,8 +169,12 @@ bin/rails runner 'pp Rails.autoloaders.main.dirs; pp Rails.autoloaders.once.dirs
 ```bash
 gem install next_rails
 next --init   # or: bundle exec next --init
-bundle exec next_rails bundle_report
+bundle exec bundle_report compatibility --rails-version=7.2.4
 ```
+
+Replace `7.2.4` with the exact target version for this hop. `bundle_report` is
+an executable provided by `next_rails`, not a `next_rails` subcommand; make it
+available in the selected bundle before using `bundle exec`.
 
 Alternatively, paste `Gemfile.lock` into https://railsbump.org/ and filter for
 the target Rails version. Create a list of gems that need updating.
