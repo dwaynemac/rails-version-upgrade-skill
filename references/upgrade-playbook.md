@@ -28,6 +28,17 @@ Never jump across minor versions. Each hop is a complete cycle.
 
 ### 0.2 Verify test coverage
 
+Before running the baseline, check the repository's test setup instructions,
+test helpers, and CI configuration for required local configuration and browser
+prerequisites:
+
+- Verify required test configuration keys are present without printing their
+  values. Use documented test-safe values or authorized local configuration;
+  never fabricate live credentials or copy production secrets to make tests pass.
+- For browser tests, check the installed browser version against the project's
+  driver and driver-manager support. Permission to launch a browser does not
+  establish driver compatibility.
+
 ```bash
 bundle exec rake stats
 ```
@@ -38,6 +49,20 @@ Run the full test suite and confirm it is green:
 bundle exec rails test        # Minitest
 bundle exec rspec             # RSpec
 ```
+
+Use the repository's full-suite commands, including a separate system-test
+command when needed. Record the commands, exit status, and test counts, including
+failures, errors, and skips. Focused reruns can diagnose a problem but do not
+replace the full baseline.
+
+If the baseline is red, distinguish an evidenced setup blocker (such as missing
+test API configuration or an unresolved browser driver) from an application
+defect. Resolve the prerequisite using the documented test setup, then rerun the
+full suite. If it cannot be resolved, report the blocker and that a green
+baseline has not been established; do not classify it as a production defect
+without evidence. Never weaken assertions or skip tests to obtain a green run.
+A real application failure on the current Rails version remains a stop condition:
+fix it and establish a green full baseline before changing Rails dependencies.
 
 If coverage is below ~80%, strongly recommend adding tests before proceeding.
 Use `simplecov` if not already configured.
