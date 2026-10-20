@@ -143,7 +143,7 @@ bin/rails runner 'pp Rails.autoloaders.main.dirs; pp Rails.autoloaders.once.dirs
 
 ```bash
 gem install next_rails
-next --init   # or: bundle exec next --init
+next_rails --init   # or: bundle exec next_rails --init
 bundle exec next_rails bundle_report
 ```
 
@@ -227,26 +227,32 @@ during an upgrade.
 
 ```bash
 gem install next_rails
-next --init
+next_rails --init
 ```
 
 This creates `Gemfile.next` and a helper method `NextRails.next?`.
 
 **Alternative: `eval_gemfile` pattern (no helper gem needed)**
 
-If you prefer not to use `next_rails`, create `Gemfile.next` manually using
-`eval_gemfile` to inherit the base Gemfile and only override the Rails pin:
+Declare Rails once in the base Gemfile. `eval_gemfile` evaluates that file; it
+does not override an existing dependency. A second Rails declaration with a
+different requirement raises a Bundler Gemfile error before resolution.
+
+```ruby
+# Gemfile — replace the existing Rails declaration
+rails_target = File.basename(Bundler.default_gemfile.to_s) == "Gemfile.next"
+gem "rails", rails_target ? "~> 8.0.0" : "~> 7.2.0"
+```
 
 ```ruby
 # Gemfile.next
 eval_gemfile "Gemfile"
-
-gem "rails", "~> 8.0.0"
-# Add temporary compatibility pins here only if needed.
+# Add target-only pins here only for gems not declared in the base Gemfile.
 ```
 
-This approach is simpler for apps where the base Gemfile does not need
-conditional branches — just point `BUNDLE_GEMFILE=Gemfile.next` at it.
+Use the same conditional pattern for existing direct dependencies whose
+requirements differ. On promotion, replace the conditional with the target
+requirement and remove `Gemfile.next`.
 
 ### 3.2 Edit Gemfile to conditionally pin Rails version (next_rails path)
 
