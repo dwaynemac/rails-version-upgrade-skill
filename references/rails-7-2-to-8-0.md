@@ -98,7 +98,7 @@ while CI proves Rails 8.0 compatibility.
 
 ```bash
 gem install next_rails
-next --init
+next_rails --init
 ```
 
 ```ruby
@@ -112,13 +112,25 @@ end
 
 ### Option B: `eval_gemfile`
 
+Declare Rails once in the base Gemfile. `eval_gemfile` evaluates that file; it
+does not override an existing dependency. A second Rails declaration with a
+different requirement raises a Bundler Gemfile error before resolution.
+
+```ruby
+# Gemfile — replace the existing Rails declaration
+rails_target = File.basename(Bundler.default_gemfile.to_s) == "Gemfile.next"
+gem "rails", rails_target ? "~> 8.0.0" : "~> 7.2.0"
+```
+
 ```ruby
 # Gemfile.next
 eval_gemfile "Gemfile"
-
-gem "rails", "~> 8.0.0"
-# Add temporary compatibility pins here only when necessary.
+# Add target-only pins here only for gems not declared in the base Gemfile.
 ```
+
+Use the same conditional pattern for existing direct dependencies whose
+requirements differ. On promotion, replace the conditional with the target
+requirement and remove `Gemfile.next`.
 
 Install both variants:
 
@@ -167,6 +179,25 @@ Review every generated diff. In particular:
 
 Use RailsDiff (`https://railsdiff.org/7.2.0/8.0.0`) as a comparison aid, not as
 an instruction to overwrite app-specific configuration.
+
+---
+
+## Timezone preservation during boot
+
+When adopting `config.active_support.to_time_preserves_timezone = :zone` to
+resolve the Rails 8 deprecation, set it in the application configuration before
+framework initialization, for example inside the application class in
+`config/application.rb`. Setting it only in a generated defaults initializer
+can be too late if boot code converts times before the setting takes effect.
+This was observed in the [Manual upgrade](https://github.com/dwaynemac/nipuna-login/pull/15);
+verify the initialization order in the application rather than assuming that
+the generated file removes every boot warning.
+
+Keep the bulk `config.load_defaults` version unchanged for this targeted fix.
+Verify a fresh-process boot and timezone conversion behavior under both Rails
+versions, then rerun the suite. Check that the converted time retains the
+expected zone, including daylight-saving behavior where relevant; suppressing
+the warning alone does not verify the behavior.
 
 ---
 
@@ -318,29 +349,27 @@ RAILS_ENV=production SECRET_KEY_BASE_DUMMY=1 \
 
 ### Lockfile and runtime sanity checks
 
-After the Rails 8.0 bundle resolves, verify that the lockfile did not keep
-stale Rack 2-era dependencies through transitive constraints.
+After resolution, check the selected Gemfile and actual versions. Run these
+commands with `BUNDLE_GEMFILE=Gemfile.next` before promotion and against the
+main Gemfile afterward:
 
 ```bash
 bundle exec rails runner 'puts "Rails #{Rails.version}"; puts "Rack #{Rack.release}"; puts "Bundler gemfile=#{Bundler.default_gemfile}"'
-bundle exec ruby -e 'puts Bundler.locked_gems.specs.values_at("rails", "rack", "rack-session", "rackup", "rack-cors").compact.map { |s| "#{s.name} #{s.version}" }'
+bundle exec ruby -e 'names = %w[rails rack rack-session rackup rack-cors]; puts Bundler.locked_gems.specs.select { |s| names.include?(s.name) }.map { |s| "#{s.name} #{s.version}" }'
 ```
 
-Expected shape for a typical Rails 8.0/Rack 3 app:
+Do not infer a Rack 3 requirement from Rails 8. The tagged Rails 8.0.5.1
+[Action Pack gemspec](https://github.com/rails/rails/blob/v8.0.5.1/actionpack/actionpack.gemspec)
+allows `rack >= 2.2.4` and `rack-session >= 1.0.1`; the
+[Railties gemspec](https://github.com/rails/rails/blob/v8.0.5.1/railties/railties.gemspec)
+allows `rackup >= 1.0.0`. Compatible Rack 2 versions may remain in an existing
+app. Check the exact target release and all server/middleware constraints,
+security requirements, and request/session tests before deciding to migrate.
+A permissive gemspec alone does not prove application compatibility.
 
-- `rails 8.0.x`
-- `rack 3.2.x`
-- `rack-session 2.1.x`
-- `rackup 2.3.x`
-- `rack-cors 3.0.x` if the app uses CORS middleware
-
-If the main lockfile still contains Rack 2-era versions after promotion, run a
-targeted update of the Rack family and any direct gems constraining it. Do not
-run an unrestricted `bundle update`.
-
-```bash
-bundle update rails rack rack-session rackup rack-cors
-```
+Update Rack-family gems only for an identified requirement, vulnerability, or
+explicit migration scope. Review every lockfile version change, including
+transitive gems, using `references/gem-compatibility.md`.
 
 ### Persisted data compatibility checks
 
@@ -390,8 +419,8 @@ Promote only after the Rails 8.0 dual-boot suite is green.
 
 1. Move the Rails 8.0 constraint from `Gemfile.next` to `Gemfile`.
 2. Run targeted `bundle update` commands as needed to reconcile `Gemfile.lock`.
-3. Verify the promoted main lockfile has Rails 8 and Rack 3-compatible versions.
-4. Remove temporary `NextRails.next?` branches and `Gemfile.next` files.
+3. Verify the promoted main lockfile has Rails 8 and a compatible, tested Rack stack.
+4. Remove temporary Rails-selection conditionals and `Gemfile.next` files.
 5. Remove deployment build args or environment variables that still point at
    `Gemfile.next`.
 6. Keep `config.load_defaults 7.2` until the framework-only upgrade has been

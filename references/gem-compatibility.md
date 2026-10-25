@@ -69,6 +69,30 @@ BUNDLE_GEMFILE=Gemfile.next bundle exec rails test
 If a gem update breaks tests, address the breakage before moving to the next
 gem. Stacking unverified updates makes root-cause analysis much harder.
 
+### Review the complete lockfile diff
+
+Start from the baseline lockfile (copy it to `Gemfile.next.lock` when creating
+that bundle) and prefer a targeted conservative update:
+
+```bash
+BUNDLE_GEMFILE=Gemfile.next bundle update rails --conservative
+```
+
+[Bundler's update documentation](https://bundler.io/man/bundle-update.1.html)
+explains conservative resolution. It does not guarantee that only Rails gems
+change: required dependency changes and other selected transitive versions
+still need review. Compare every added, removed, or changed gem with the
+baseline and record why each change is needed.
+
+If an unrelated gem moves unnecessarily, temporarily constrain it to its
+baseline version in the target bundle and resolve again. Use a conditional
+requirement for an existing direct dependency instead of declaring it twice.
+Do not retain an incompatible or vulnerable baseline version merely to reduce
+the diff. Remove temporary resolution pins before promotion, run `bundle
+install`, inspect the resulting lockfile again, and validate that final bundle.
+Do not hand-edit dependency edges in the lockfile or claim tests from an earlier
+resolution prove the final one.
+
 ---
 
 ## Step 4 — Writing Dual-Boot Compatible Code
@@ -129,10 +153,32 @@ end
 
 | Gem | Rails 8 status | Notes |
 |-----|---------------|-------|
-| `devise` | Compatible (≥ 4.9) | Ensure latest 4.x |
+| `devise` | Verify lazy-route and session behavior on Rails 8 | Devise 5 includes lazy-route support; see the compatibility note below |
 | `clearance` | Compatible (≥ 2.x) | |
 | `authlogic` | Unmaintained | Consider migrating to `devise` or Rails 8's built-in generator |
 | `sorcery` | Compatible (≥ 1.x) | |
+
+#### Devise: lazy routes and token continuity
+
+Rails 8 lazily loads routes in development and test. Devise 4 can access
+mappings before those routes are loaded; symptoms include missing mappings or
+order-dependent session deserialization failures. In one reproduced upgrade,
+a temporary test `RouteSet` triggered Warden configuration before application
+mappings existed, and a restored user became a Hash. The same seed passed on
+Rails 7.2 and failed repeatedly on Rails 8 with Devise 4.9.3; Devise 5.0.4 passed.
+
+[Devise's upstream fix](https://github.com/heartcombo/devise/pull/5728) loads
+routes before accessing mappings, and the
+[Devise 5 changelog](https://github.com/heartcombo/devise/blob/v5.0.4/CHANGELOG.md)
+documents Rails 8 support. Reproduce the app's failure before selecting a
+compatible release; these example versions are not universal pins. Verify the
+failing seed, full suite, login, and session restoration after the change.
+
+A Devise major update also changes default secret discovery. Preserve an
+explicit `Devise.secret_key` and verify that the effective signing key remains
+the same without printing it. Previously issued password-reset, confirmation,
+and unlock tokens can become invalid if the fallback key changes. Review the
+major-version changelog and test token continuity before promotion.
 
 ### Background jobs
 
@@ -201,7 +247,7 @@ end
 | `active_admin_import` | Older releases can constrain ActiveAdmin/import dependencies below Rails 8-compatible versions | Update to a Rails 8-compatible major; verify import flows in ActiveAdmin request specs |
 | `active_storage_validations` | Older releases may pull stale Active Storage assumptions | Update with Rails/Active Storage when the lockfile is promoted |
 | `delayed_job` / `delayed_job_active_record` | Old releases constrained ActiveSupport/ActiveRecord below Rails 8 | Use releases that allow Rails 8 and verify persisted queued jobs deserialize |
-| `rack`, `rack-session`, `rackup`, `rack-cors` | Main lockfile can remain on Rack 2-era versions after promotion if stale constraints remain | Verify Rack 3-family versions explicitly and update the Rack family with targeted `bundle update` commands |
+| `rack`, `rack-session`, `rackup`, `rack-cors` | Rails 8 does not itself imply Rack 3; server and middleware constraints can differ | Check exact release gemspecs and application compatibility before updating; see the focused Rails 7.2 → 8.0 playbook |
 
 When replacing Groupdate's old `.top` helper, preserve the existing return shape
 with plain ActiveRecord:

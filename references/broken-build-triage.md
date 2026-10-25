@@ -29,6 +29,34 @@ hardest 50% of the work.
 
 ---
 
+## Establish whether a failure is new
+
+A passing randomized baseline does not prove that every test order passes.
+Before changing code for a target-suite failure, replay its exact seed on the
+unchanged current-version code and lockfile, with the same test selection,
+worker count, environment, and database setup. For example:
+
+```bash
+# Use the seed printed by the failing target run.
+BUNDLE_GEMFILE=Gemfile.next PARALLEL_WORKERS=1 bundle exec rails test --seed 45784
+PARALLEL_WORKERS=1 bundle exec rails test --seed 45784
+# RSpec equivalent: bundle exec rspec --seed 45784
+```
+
+Keep a clean baseline checkout when application compatibility edits already
+exist; merely switching Gemfiles would otherwise test modified code. If the
+same failure occurs on the baseline, record it as pre-existing and stop the
+upgrade until the baseline issue is resolved separately. Record target-only
+failures separately; a shared failure does not classify the whole run.
+
+Preserve the failing full-suite order when an isolated example passes. For
+example, an earlier test can leak `I18n.locale` and break a later assertion of
+English validation messages. Do not hide this by choosing a passing seed or
+weakening assertions. After an authorized baseline fix, rerun the failing seed
+and the full suite before resuming the upgrade.
+
+---
+
 ## Order of Operations
 
 ### 1. Fix load errors first
