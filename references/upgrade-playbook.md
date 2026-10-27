@@ -28,6 +28,23 @@ Never jump across minor versions. Each hop is a complete cycle.
 
 ### 0.2 Verify test coverage
 
+Establish the baseline using the repository's declared Ruby. If that version is
+missing locally, install it rather than selecting a different installed Ruby.
+When an older ruby-build lacks the definition, an inspected definition from the
+official [rbenv/ruby-build repository](https://github.com/rbenv/ruby-build) can be
+supplied through a temporary `RUBY_BUILD_DEFINITIONS` directory. Record its
+revision and retain source checksum verification; confirm the installed runtime
+before proceeding. This restores the declared environment, not a Ruby upgrade.
+
+If a frozen bundle rejects only the host platform, prepare a disposable copy of
+the baseline Gemfile and lockfile, add that platform with `bundle lock
+--add-platform`, and inspect the complete diff before installing. Preserve gem
+versions and dependency constraints; stop if resolution changes them. Run the
+baseline with `BUNDLE_GEMFILE` pointing to that copy and frozen installs enabled,
+and record this setup in the results. Use a disposable checkout when relative
+Gemfile paths or path dependencies require it. This avoids modifying tracked
+dependencies merely to establish the pre-upgrade baseline.
+
 ```bash
 bundle exec rake stats
 ```
