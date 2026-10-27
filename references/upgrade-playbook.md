@@ -411,6 +411,16 @@ THOR_DIFF="git diff --no-index --color" \
   BUNDLE_GEMFILE=Gemfile.next bundle exec rails app:update
 ```
 
+For a preview, run the updater in a disposable checkout with local test
+configuration. Do not rely on `--pretend` or `--skip` to leave the application
+untouched: Rails 8.1's updater invokes `active_storage:update` inline, which can
+copy migrations even when generator file actions are skipped or pretended.
+Capture `git status --short` before and after, and inspect untracked files as
+well as `git diff`, especially `db/migrate/`. Retain migrations required by an
+app that uses Active Storage; exclude newly generated migrations for an unused
+subsystem only after checking the application's configuration and schema.
+Preserve pre-existing files and edits when removing generated output.
+
 Do not blindly accept all changes. Categorize every generated diff before
 applying it:
 
