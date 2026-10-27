@@ -28,6 +28,23 @@ Never jump across minor versions. Each hop is a complete cycle.
 
 ### 0.2 Verify test coverage
 
+Establish the baseline using the repository's declared Ruby. If that version is
+missing locally, install it rather than selecting a different installed Ruby.
+When an older ruby-build lacks the definition, an inspected definition from the
+official [rbenv/ruby-build repository](https://github.com/rbenv/ruby-build) can be
+supplied through a temporary `RUBY_BUILD_DEFINITIONS` directory. Record its
+revision and retain source checksum verification; confirm the installed runtime
+before proceeding. This restores the declared environment, not a Ruby upgrade.
+
+If a frozen bundle rejects only the host platform, prepare a disposable copy of
+the baseline Gemfile and lockfile, add that platform with `bundle lock
+--add-platform`, and inspect the complete diff before installing. Preserve gem
+versions and dependency constraints; stop if resolution changes them. Run the
+baseline with `BUNDLE_GEMFILE` pointing to that copy and frozen installs enabled,
+and record this setup in the results. Use a disposable checkout when relative
+Gemfile paths or path dependencies require it. This avoids modifying tracked
+dependencies merely to establish the pre-upgrade baseline.
+
 ```bash
 bundle exec rake stats
 ```
@@ -410,6 +427,16 @@ rather than the default interactive prompt:
 THOR_DIFF="git diff --no-index --color" \
   BUNDLE_GEMFILE=Gemfile.next bundle exec rails app:update
 ```
+
+For a preview, run the updater in a disposable checkout with local test
+configuration. Do not rely on `--pretend` or `--skip` to leave the application
+untouched: Rails 8.1's updater invokes `active_storage:update` inline, which can
+copy migrations even when generator file actions are skipped or pretended.
+Capture `git status --short` before and after, and inspect untracked files as
+well as `git diff`, especially `db/migrate/`. Retain migrations required by an
+app that uses Active Storage; exclude newly generated migrations for an unused
+subsystem only after checking the application's configuration and schema.
+Preserve pre-existing files and edits when removing generated output.
 
 Do not blindly accept all changes. Categorize every generated diff before
 applying it:

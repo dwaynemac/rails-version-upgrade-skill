@@ -61,6 +61,15 @@ config/initializers/new_framework_defaults_X_Y.rb
 This file contains all new defaults for the target version, **commented out**.
 Uncommenting a line activates the new behaviour.
 
+Use the target Rails gem's generated initializer and `load_defaults` source as
+the inventory for the exact version being installed. The summaries below are
+navigation aids, not a substitute for that inventory: an omitted setting can
+otherwise first take effect when `config.load_defaults` is promoted, bypassing
+its individual validation. Locate the selected gem with
+`BUNDLE_GEMFILE=Gemfile.next bundle show railties` and inspect
+`lib/rails/generators/rails/app/templates/config/initializers/` and
+`lib/rails/application/configuration.rb`.
+
 Workflow per default:
 1. Read the inline comment explaining what the default changes.
 2. Search the codebase for affected code.
@@ -124,6 +133,8 @@ These change security, encryption, session, or callback behaviour:
 ### Rails 8.1 new defaults
 - `config.action_controller.action_on_path_relative_redirect = :raise`
 - `config.action_controller.escape_json_responses = false`
+- `config.active_support.escape_js_separators_in_json = false`
+- `config.action_view.render_tracker = :ruby`
 - `config.action_view.remove_hidden_field_autocomplete = true`
 - `config.active_record.raise_on_missing_required_finder_order_columns = true`
 - `config.yjit = !Rails.env.local?`
